@@ -31,7 +31,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           chmod +x ./gradlew
-          ./gradlew make
+          ./gradlew make --stacktrace
 
       - name: Upload plugin artifacts
         uses: actions/upload-artifact@v7

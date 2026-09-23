@@ -72,19 +72,19 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
 
         val dohSwitch = Utils.createCheckedSetting(
             ctx,
-            CheckedSetting.ViewType.RADIO,
+            CheckedSetting.ViewType.SWITCH,
             "DNS-over-HTTPS (DoH)",
             "Encrypted DNS queries via HTTPS (Cloudflare, Google, AdGuard, NextDNS)"
         )
         val udpSwitch = Utils.createCheckedSetting(
             ctx,
-            CheckedSetting.ViewType.RADIO,
+            CheckedSetting.ViewType.SWITCH,
             "Direct UDP (Port 53)",
             "Standard DNS datagram queries to upstream DNS server IP"
         )
         val staticSwitch = Utils.createCheckedSetting(
             ctx,
-            CheckedSetting.ViewType.RADIO,
+            CheckedSetting.ViewType.SWITCH,
             "Static Host Mappings Only",
             "Only resolve hosts defined in the static JSON overrides table"
         )
@@ -166,21 +166,15 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
         // --- Custom Inputs ---
         addHeader(ctx, "Custom Endpoints / Server IPs")
 
-        val dohInput = TextInput(ctx).apply {
-            setHint("DoH Endpoint URL (e.g. https://1.1.1.1/dns-query)")
-            editText.setText(config.dohUrl)
+        val dohInput = TextInput(ctx, "DoH Endpoint URL (e.g. https://1.1.1.1/dns-query)", config.dohUrl).apply {
             editText.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         }
 
-        val primaryIpInput = TextInput(ctx).apply {
-            setHint("Primary UDP DNS IP (e.g. 1.1.1.1)")
-            editText.setText(config.primaryDnsIp)
+        val primaryIpInput = TextInput(ctx, "Primary UDP DNS IP (e.g. 1.1.1.1)", config.primaryDnsIp).apply {
             editText.inputType = InputType.TYPE_CLASS_TEXT
         }
 
-        val secondaryIpInput = TextInput(ctx).apply {
-            setHint("Secondary UDP DNS IP (e.g. 1.0.0.1)")
-            editText.setText(config.secondaryDnsIp)
+        val secondaryIpInput = TextInput(ctx, "Secondary UDP DNS IP (e.g. 1.0.0.1)", config.secondaryDnsIp).apply {
             editText.inputType = InputType.TYPE_CLASS_TEXT
         }
 
