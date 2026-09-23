@@ -247,8 +247,14 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                     try {
                         val addresses = DnsPlugin.resolver.lookup("discord.com")
                         val elapsed = System.currentTimeMillis() - start
-                        val ipList = addresses.joinToString(", ") { addr -> addr.hostAddress ?: "" }
-                        mainHandler.post {
+                        val sb = StringBuilder()
+                        var a = 0
+                        while (a < addresses.size) {
+                            if (sb.isNotEmpty()) sb.append(", ")
+                            sb.append(addresses[a].hostAddress)
+                            a++
+                        }
+                        val ipList = sb.toString()
                             it.isEnabled = true
                             AlertDialog.Builder(ctx)
                                 .setTitle("DNS Test Success")

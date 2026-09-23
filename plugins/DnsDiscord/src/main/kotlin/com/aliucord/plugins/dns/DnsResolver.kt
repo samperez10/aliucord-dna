@@ -3,6 +3,7 @@ package com.aliucord.plugins.dns
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
+import java.io.InputStreamReader
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
@@ -103,13 +104,24 @@ class DnsResolver(var config: DnsConfig) {
             throw UnknownHostException("DoH server returned HTTP ${conn.responseCode}")
         }
 
-        val responseBody = conn.inputStream.bufferedReader().use { it.readText() }
-        val json = JSONObject(responseBody)
+        val stream = conn.inputStream
+        val reader = InputStreamReader(stream, Charsets.UTF_8)
+        val buffer = CharArray(1024)
+        val responseSb = StringBuilder()
+        var readCount: Int
+        while (reader.read(buffer).also { readCount = it } != -1) {
+            responseSb.append(buffer, 0, readCount)
+        }
+        stream.close()
+
+        val json = JSONObject(responseSb.toString())
         val result = mutableListOf<InetAddress>()
 
         if (json.has("Answer")) {
             val answers = json.getJSONArray("Answer")
-            for (i in 0 until answers.length()) {
+            val len = answers.length()
+            var i = 0
+            while (i < len) {
                 val record = answers.getJSONObject(i)
                 val type = record.optInt("type", 0)
                 val data = record.optString("data", "")
@@ -119,6 +131,7 @@ class DnsResolver(var config: DnsConfig) {
                         result.add(InetAddress.getByName(data))
                     } catch (ignored: Exception) {}
                 }
+                i++
             }
         }
 
@@ -175,11 +188,13 @@ class DnsResolver(var config: DnsConfig) {
         dos.writeShort(0) // ARCOUNT
 
         // Question: QNAME
-        val parts = hostname.split(".")
-        for (part in parts) {
-            val bytes = part.toByteArray(Charsets.US_ASCII)
+        val parts = hostname.split(".").toTypedArray()
+        var p = 0
+        while (p < parts.size) {
+            val bytes = parts[p].toByteArray(Charsets.US_ASCII)
             dos.writeByte(bytes.size)
             dos.write(bytes)
+            p++
         }
         dos.writeByte(0) // End of QNAME
 
@@ -215,7 +230,8 @@ class DnsResolver(var config: DnsConfig) {
         ptr += 4 // Skip QTYPE and QCLASS
 
         val addresses = mutableListOf<InetAddress>()
-        for (i in 0 until ancount) {
+        var i = 0
+        while (i < ancount) {
             if (ptr >= length) break
             // Parse name (may be compressed pointer)
             if ((data[ptr].toInt() and 0xC0) == 0xC0) {
@@ -238,6 +254,7 @@ class DnsResolver(var config: DnsConfig) {
                 addresses.add(InetAddress.getByAddress(ipBytes))
             }
             ptr += rdLength
+            i++
         }
 
         return addresses
