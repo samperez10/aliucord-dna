@@ -255,6 +255,7 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                             a++
                         }
                         val ipList = sb.toString()
+                        mainHandler.post {
                             it.isEnabled = true
                             AlertDialog.Builder(ctx)
                                 .setTitle("DNS Test Success")
