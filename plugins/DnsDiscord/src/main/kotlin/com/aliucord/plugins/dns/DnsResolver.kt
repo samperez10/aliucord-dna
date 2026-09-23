@@ -16,13 +16,15 @@ class DnsResolver(var config: DnsConfig) {
 
     private data class CacheEntry(val addresses: List<InetAddress>, val expiresAt: Long)
     private val cache = ConcurrentHashMap<String, CacheEntry>()
-    private val isResolving = ThreadLocal.withInitial { false }
+    private val isResolving = object : ThreadLocal<Boolean>() {
+        override fun initialValue(): Boolean = false
+    }
 
     fun lookup(hostname: String): List<InetAddress> {
         if (hostname.isBlank() || !config.enabled) return emptyList()
 
         // Prevent recursive intercept when the resolver is looking up DoH endpoint
-        if (isResolving.get()) return emptyList()
+        if (isResolving.get() == true) return emptyList()
 
         val lowerHost = hostname.lowercase()
 
@@ -55,7 +57,7 @@ class DnsResolver(var config: DnsConfig) {
             resolved = when (config.mode) {
                 DnsMode.DOH -> resolveDoH(hostname)
                 DnsMode.UDP -> resolveUdp(hostname)
-                DnsMode.STATIC_ONLY -> null
+                else -> null
             }
         } catch (ignored: Exception) {
         } finally {

@@ -2,53 +2,69 @@ package com.aliucord.plugins.dns
 
 import org.json.JSONObject
 
-enum class DnsMode(val displayName: String) {
-    DOH("DNS-over-HTTPS (DoH)"),
-    UDP("Direct UDP (Port 53)"),
-    STATIC_ONLY("Static Host Mappings Only")
+object DnsMode {
+    const val DOH = "DOH"
+    const val UDP = "UDP"
+    const val STATIC_ONLY = "STATIC_ONLY"
 }
 
-enum class DnsPreset(
+class DnsPreset(
+    val name: String,
     val displayName: String,
     val dohUrl: String,
     val primaryIp: String,
     val secondaryIp: String
 ) {
-    CLOUDFLARE(
-        "Cloudflare (1.1.1.1)",
-        "https://cloudflare-dns.com/dns-query",
-        "1.1.1.1",
-        "1.0.0.1"
-    ),
-    GOOGLE(
-        "Google (8.8.8.8)",
-        "https://dns.google/dns-query",
-        "8.8.8.8",
-        "8.8.4.4"
-    ),
-    ADGUARD(
-        "AdGuard DNS (Blocks Ads/Trackers)",
-        "https://dns.adguard-dns.com/dns-query",
-        "94.140.14.14",
-        "94.140.15.15"
-    ),
-    QUAD9(
-        "Quad9 (Blocks Malware)",
-        "https://dns.quad9.net/dns-query",
-        "9.9.9.9",
-        "149.112.112.112"
-    ),
-    CUSTOM(
-        "Custom Configuration",
-        "",
-        "",
-        ""
-    )
+    companion object {
+        val CLOUDFLARE = DnsPreset(
+            "CLOUDFLARE",
+            "Cloudflare (1.1.1.1)",
+            "https://cloudflare-dns.com/dns-query",
+            "1.1.1.1",
+            "1.0.0.1"
+        )
+        val GOOGLE = DnsPreset(
+            "GOOGLE",
+            "Google (8.8.8.8)",
+            "https://dns.google/dns-query",
+            "8.8.8.8",
+            "8.8.4.4"
+        )
+        val ADGUARD = DnsPreset(
+            "ADGUARD",
+            "AdGuard DNS (Blocks Ads/Trackers)",
+            "https://dns.adguard-dns.com/dns-query",
+            "94.140.14.14",
+            "94.140.15.15"
+        )
+        val QUAD9 = DnsPreset(
+            "QUAD9",
+            "Quad9 (Blocks Malware)",
+            "https://dns.quad9.net/dns-query",
+            "9.9.9.9",
+            "149.112.112.112"
+        )
+        val CUSTOM = DnsPreset(
+            "CUSTOM",
+            "Custom Configuration",
+            "",
+            "",
+            ""
+        )
+
+        fun fromName(name: String): DnsPreset = when (name.uppercase()) {
+            "GOOGLE" -> GOOGLE
+            "ADGUARD" -> ADGUARD
+            "QUAD9" -> QUAD9
+            "CUSTOM" -> CUSTOM
+            else -> CLOUDFLARE
+        }
+    }
 }
 
 data class DnsConfig(
     var enabled: Boolean = true,
-    var mode: DnsMode = DnsMode.DOH,
+    var mode: String = DnsMode.DOH,
     var preset: DnsPreset = DnsPreset.CLOUDFLARE,
     var dohUrl: String = DnsPreset.CLOUDFLARE.dohUrl,
     var primaryDnsIp: String = DnsPreset.CLOUDFLARE.primaryIp,
@@ -59,7 +75,7 @@ data class DnsConfig(
     fun toJson(): JSONObject {
         val root = JSONObject()
         root.put("enabled", enabled)
-        root.put("mode", mode.name)
+        root.put("mode", mode)
         root.put("preset", preset.name)
         root.put("dohUrl", dohUrl)
         root.put("primaryDnsIp", primaryDnsIp)
@@ -87,10 +103,10 @@ data class DnsConfig(
                 val root = JSONObject(jsonStr)
                 if (root.has("enabled")) config.enabled = root.getBoolean("enabled")
                 if (root.has("mode")) {
-                    runCatching { config.mode = DnsMode.valueOf(root.getString("mode")) }
+                    config.mode = root.getString("mode")
                 }
                 if (root.has("preset")) {
-                    runCatching { config.preset = DnsPreset.valueOf(root.getString("preset")) }
+                    config.preset = DnsPreset.fromName(root.getString("preset"))
                 }
                 if (root.has("dohUrl")) config.dohUrl = root.getString("dohUrl")
                 if (root.has("primaryDnsIp")) config.primaryDnsIp = root.getString("primaryDnsIp")
