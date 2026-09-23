@@ -4,6 +4,27 @@ A plugin for [Aliucord](https://aliucord.com/) (Discord for Android) that interc
 
 ---
 
+## Installation & Downloads
+
+### Method 1: In-App One-Click Install (Aliucord)
+Send or click this link inside Discord/Aliucord:
+```
+https://github.com/samperez10/aliucord-dns
+```
+Aliucord will automatically detect the plugin and prompt you to install it with one tap.
+
+### Method 2: Direct Download
+1. Download the latest pre-compiled plugin zip:
+   - **[GitHub Release (v1.0.0)](https://github.com/samperez10/aliucord-dns/releases/latest/download/DnsDiscord.zip)**
+   - **[Direct Build Link (Always Latest)](https://raw.githubusercontent.com/samperez10/aliucord-dns/builds/DnsDiscord.zip)**
+2. Move `DnsDiscord.zip` to your device's plugins directory:
+   ```
+   /storage/emulated/0/Aliucord/plugins/DnsDiscord.zip
+   ```
+3. Restart or open Discord, then go to **Settings > Plugins > DnsDiscord**.
+
+---
+
 ## Features
 
 - **In-App Scope Only:** Intercepts Discord's internal `OkHttpClient` and `Dns.SYSTEM` stack without touching system-wide Android DNS settings.
