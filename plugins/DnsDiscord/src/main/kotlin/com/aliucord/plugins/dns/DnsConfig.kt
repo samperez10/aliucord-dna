@@ -52,7 +52,7 @@ class DnsPreset(
             ""
         )
 
-        fun fromName(name: String): DnsPreset = when (name.uppercase()) {
+        fun fromName(name: String): DnsPreset = when (name.toUpperCase(java.util.Locale.ROOT)) {
             "GOOGLE" -> GOOGLE
             "ADGUARD" -> ADGUARD
             "QUAD9" -> QUAD9
@@ -83,8 +83,10 @@ data class DnsConfig(
         root.put("fallbackToSystem", fallbackToSystem)
 
         val hostsObj = JSONObject()
-        for ((host, ip) in staticHosts) {
-            hostsObj.put(host, ip)
+        val it = staticHosts.entries.iterator()
+        while (it.hasNext()) {
+            val entry = it.next()
+            hostsObj.put(entry.key, entry.value)
         }
         root.put("staticHosts", hostsObj)
         return root
@@ -97,7 +99,7 @@ data class DnsConfig(
     companion object {
         fun fromJson(jsonStr: String): DnsConfig {
             val config = DnsConfig()
-            if (jsonStr.isBlank()) return config
+            if (jsonStr.trim().isEmpty()) return config
 
             try {
                 val root = JSONObject(jsonStr)

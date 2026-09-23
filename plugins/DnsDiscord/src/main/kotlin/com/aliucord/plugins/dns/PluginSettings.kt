@@ -210,7 +210,7 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
             text = "Add / Edit Static Host Mapping"
             setOnClickListener {
                 showAddHostDialog(ctx) { host, ip ->
-                    config.staticHosts[host.lowercase()] = ip
+                    config.staticHosts[host.toLowerCase(java.util.Locale.ROOT)] = ip
                     DnsPlugin.saveConfig(config)
                     Utils.showToast("Mapped $host -> $ip")
                     reRender()
@@ -254,7 +254,7 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                             sb.append(addresses[a].hostAddress)
                             a++
                         }
-                        val ipList = sb.toString()
+                        val ipList = if (sb.isNotEmpty()) sb.toString() else "(none resolved)"
                         mainHandler.post {
                             it.isEnabled = true
                             AlertDialog.Builder(ctx)
@@ -263,13 +263,14 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                                 .setPositiveButton("OK", null)
                                 .show()
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         val elapsed = System.currentTimeMillis() - start
+                        val errorMsg = "${e.javaClass.simpleName}: ${e.message}"
                         mainHandler.post {
                             it.isEnabled = true
                             AlertDialog.Builder(ctx)
                                 .setTitle("DNS Test Failed")
-                                .setMessage("Failed after ${elapsed}ms\n\nError: ${e.message}")
+                                .setMessage("Failed after ${elapsed}ms\n\nError: $errorMsg")
                                 .setPositiveButton("OK", null)
                                 .show()
                         }
@@ -313,7 +314,7 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
             .setPositiveButton("Save") { _, _ ->
                 val host = hostInput.text.toString().trim()
                 val ip = ipInput.text.toString().trim()
-                if (host.isNotBlank() && ip.isNotBlank()) {
+                if (host.isNotEmpty() && ip.isNotEmpty()) {
                     onSave(host, ip)
                 } else {
                     Utils.showToast("Host and IP cannot be empty")

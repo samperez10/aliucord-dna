@@ -10,8 +10,11 @@ import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
 import java.net.UnknownHostException
+import java.nio.charset.StandardCharsets
+import java.util.Locale
+import java.util.Random
+import java.util.StringTokenizer
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.random.Random
 
 class DnsResolver(var config: DnsConfig) {
 
@@ -22,12 +25,12 @@ class DnsResolver(var config: DnsConfig) {
     }
 
     fun lookup(hostname: String): List<InetAddress> {
-        if (hostname.isBlank() || !config.enabled) return emptyList()
+        if (hostname.isEmpty() || hostname.trim().isEmpty() || !config.enabled) return emptyList()
 
         // Prevent recursive intercept when the resolver is looking up DoH endpoint
         if (isResolving.get() == true) return emptyList()
 
-        val lowerHost = hostname.lowercase()
+        val lowerHost = hostname.toLowerCase(Locale.ROOT)
 
         // 1. Check Static Host Mappings from JSON configuration
         config.staticHosts[lowerHost]?.let { staticIp ->
@@ -79,8 +82,8 @@ class DnsResolver(var config: DnsConfig) {
      */
     fun resolveDoH(hostname: String): List<InetAddress> {
         val dohEndpoint = when {
-            config.dohUrl.isNotBlank() -> config.dohUrl
-            config.preset.dohUrl.isNotBlank() -> config.preset.dohUrl
+            config.dohUrl.trim().isNotEmpty() -> config.dohUrl
+            config.preset.dohUrl.trim().isNotEmpty() -> config.preset.dohUrl
             else -> DnsPreset.CLOUDFLARE.dohUrl
         }
 
@@ -105,7 +108,7 @@ class DnsResolver(var config: DnsConfig) {
         }
 
         val stream = conn.inputStream
-        val reader = InputStreamReader(stream, Charsets.UTF_8)
+        val reader = InputStreamReader(stream, StandardCharsets.UTF_8)
         val buffer = CharArray(1024)
         val responseSb = StringBuilder()
         var readCount: Int
@@ -126,7 +129,7 @@ class DnsResolver(var config: DnsConfig) {
                 val type = record.optInt("type", 0)
                 val data = record.optString("data", "")
                 // Type 1 is A (IPv4), Type 28 is AAAA (IPv6)
-                if ((type == 1 || type == 28) && data.isNotBlank()) {
+                if ((type == 1 || type == 28) && data.trim().isNotEmpty()) {
                     try {
                         result.add(InetAddress.getByName(data))
                     } catch (ignored: Exception) {}
@@ -142,14 +145,14 @@ class DnsResolver(var config: DnsConfig) {
      * Resolves host using direct standard UDP DNS query (Port 53)
      */
     fun resolveUdp(hostname: String): List<InetAddress> {
-        val primary = config.primaryDnsIp.ifBlank { config.preset.primaryIp }
-        val secondary = config.secondaryDnsIp.ifBlank { config.preset.secondaryIp }
+        val primary = if (config.primaryDnsIp.trim().isNotEmpty()) config.primaryDnsIp else config.preset.primaryIp
+        val secondary = if (config.secondaryDnsIp.trim().isNotEmpty()) config.secondaryDnsIp else config.preset.secondaryIp
 
         try {
             val res = queryUdpServer(hostname, primary)
             if (res.isNotEmpty()) return res
         } catch (e: Exception) {
-            if (secondary.isNotBlank()) {
+            if (secondary.trim().isNotEmpty()) {
                 return queryUdpServer(hostname, secondary)
             }
             throw e
@@ -158,7 +161,7 @@ class DnsResolver(var config: DnsConfig) {
     }
 
     private fun queryUdpServer(hostname: String, serverIp: String): List<InetAddress> {
-        val queryId = Random.nextInt(0, 0xFFFF)
+        val queryId = Random().nextInt(0x10000)
         val packetData = buildDnsQueryPacket(hostname, queryId)
         val serverAddr = InetAddress.getByName(serverIp)
 
@@ -188,13 +191,12 @@ class DnsResolver(var config: DnsConfig) {
         dos.writeShort(0) // ARCOUNT
 
         // Question: QNAME
-        val parts = hostname.split(".").toTypedArray()
-        var p = 0
-        while (p < parts.size) {
-            val bytes = parts[p].toByteArray(Charsets.US_ASCII)
+        val st = StringTokenizer(hostname, ".")
+        while (st.hasMoreTokens()) {
+            val token = st.nextToken()
+            val bytes = token.toByteArray(StandardCharsets.US_ASCII)
             dos.writeByte(bytes.size)
             dos.write(bytes)
-            p++
         }
         dos.writeByte(0) // End of QNAME
 

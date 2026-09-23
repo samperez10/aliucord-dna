@@ -31,7 +31,7 @@ class DnsPlugin : Plugin() {
 
         // Load stored configuration from JSON
         val savedJson = settings.getString("config_json", "")
-        if (!savedJson.isNullOrBlank()) {
+        if (!savedJson.isNullOrEmpty() && savedJson.trim().isNotEmpty()) {
             resolver.config = DnsConfig.fromJson(savedJson)
         }
         resolver.clearCache()
