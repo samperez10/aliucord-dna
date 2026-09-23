@@ -1,6 +1,5 @@
 package com.aliucord.plugins.dns
 
-import okhttp3.Dns
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -13,18 +12,17 @@ import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
-class DnsResolver(var config: DnsConfig) : Dns {
+class DnsResolver(var config: DnsConfig) {
 
     private data class CacheEntry(val addresses: List<InetAddress>, val expiresAt: Long)
     private val cache = ConcurrentHashMap<String, CacheEntry>()
+    private val isResolving = ThreadLocal.withInitial { false }
 
-    override fun lookup(hostname: String): List<InetAddress> {
-        if (hostname.isBlank()) throw UnknownHostException("hostname is empty")
+    fun lookup(hostname: String): List<InetAddress> {
+        if (hostname.isBlank() || !config.enabled) return emptyList()
 
-        // If plugin is disabled, use default system DNS
-        if (!config.enabled) {
-            return Dns.SYSTEM.lookup(hostname)
-        }
+        // Prevent recursive intercept when the resolver is looking up DoH endpoint
+        if (isResolving.get()) return emptyList()
 
         val lowerHost = hostname.lowercase()
 
@@ -51,6 +49,7 @@ class DnsResolver(var config: DnsConfig) : Dns {
         }
 
         // 4. Resolve according to configured mode
+        isResolving.set(true)
         var resolved: List<InetAddress>? = null
         try {
             resolved = when (config.mode) {
@@ -58,8 +57,9 @@ class DnsResolver(var config: DnsConfig) : Dns {
                 DnsMode.UDP -> resolveUdp(hostname)
                 DnsMode.STATIC_ONLY -> null
             }
-        } catch (e: Exception) {
-            // Error occurred during custom resolution
+        } catch (ignored: Exception) {
+        } finally {
+            isResolving.set(false)
         }
 
         // 5. Handle fallback or return resolved addresses
@@ -68,11 +68,7 @@ class DnsResolver(var config: DnsConfig) : Dns {
             return resolved
         }
 
-        if (config.fallbackToSystem) {
-            return Dns.SYSTEM.lookup(hostname)
-        }
-
-        throw UnknownHostException("DNS lookup failed for '$hostname' using mode: ${config.mode}")
+        return emptyList()
     }
 
     /**

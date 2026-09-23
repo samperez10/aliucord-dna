@@ -63,6 +63,5 @@ subprojects {
         compileOnly(libs.discord)
         compileOnly(libs.aliucord)
         compileOnly(libs.kotlin.stdlib)
-        compileOnly("com.squareup.okhttp3:okhttp:3.12.13")
     }
 }

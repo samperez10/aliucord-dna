@@ -1,12 +1,11 @@
 package com.aliucord.plugins.dns
 
 import android.content.Context
+import com.aliucord.PluginManager
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
-import com.aliucord.patcher.InsteadHook
-import com.aliucord.patcher.before
-import okhttp3.Dns
-import okhttp3.OkHttpClient
+import com.aliucord.patcher.PreHook
+import java.net.InetAddress
 
 @AliucordPlugin(requiresRestart = false)
 class DnsPlugin : Plugin() {
@@ -18,7 +17,8 @@ class DnsPlugin : Plugin() {
         fun saveConfig(newConfig: DnsConfig) {
             resolver.config = newConfig
             resolver.clearCache()
-            instance?.settings?.setString("config_json", newConfig.toJsonString())
+            val inst = instance ?: PluginManager.plugins["DnsDiscord"] as? DnsPlugin
+            inst?.settings?.setString("config_json", newConfig.toJsonString())
         }
     }
 
@@ -31,39 +31,34 @@ class DnsPlugin : Plugin() {
 
         // Load stored configuration from JSON
         val savedJson = settings.getString("config_json", "")
-        val config = if (savedJson.isNullOrBlank()) {
-            DnsConfig()
-        } else {
-            DnsConfig.fromJson(savedJson)
+        if (!savedJson.isNullOrBlank()) {
+            resolver.config = DnsConfig.fromJson(savedJson)
         }
-
-        resolver.config = config
         resolver.clearCache()
 
-        // 1. Patch Dns.SYSTEM so all existing and default OkHttp clients use our DNS resolver
+        // Hook java.net.InetAddress.getAllByName(String)
+        // This intercepts ALL networking (OkHttp, HttpURLConnection, WebSockets, React Native)
+        // using standard Java APIs without depending on obfuscated or missing classes.
         try {
-            val systemDnsClass = Dns.SYSTEM.javaClass
+            val getAllByNameMethod = InetAddress::class.java.getDeclaredMethod("getAllByName", String::class.java)
             patcher.patch(
-                systemDnsClass.getDeclaredMethod("lookup", String::class.java),
-                InsteadHook { param ->
-                    val hostname = param.args[0] as String
-                    resolver.lookup(hostname)
+                getAllByNameMethod,
+                PreHook { param ->
+                    val hostname = param.args[0] as? String ?: return@PreHook
+                    if (!resolver.config.enabled) return@PreHook
+
+                    val resolved = resolver.lookup(hostname)
+                    if (resolved.isNotEmpty()) {
+                        param.result = resolved.toTypedArray()
+                    }
                 }
             )
+            logger.info("Successfully hooked java.net.InetAddress.getAllByName")
         } catch (e: Throwable) {
-            logger.error("Failed to patch Dns.SYSTEM", e)
+            logger.error("Failed to patch InetAddress.getAllByName", e)
         }
 
-        // 2. Patch OkHttpClient.Builder.build() to inject our custom Dns instance directly into any new client
-        try {
-            patcher.before<OkHttpClient.Builder>("build") {
-                dns(resolver)
-            }
-        } catch (e: Throwable) {
-            logger.error("Failed to patch OkHttpClient.Builder.build()", e)
-        }
-
-        logger.info("DNS Discord plugin started successfully! Mode: ${config.mode}, Enabled: ${config.enabled}")
+        logger.info("DNS Discord plugin started successfully! Mode: ${resolver.config.mode}, Enabled: ${resolver.config.enabled}")
     }
 
     fun saveConfig(newConfig: DnsConfig) {
