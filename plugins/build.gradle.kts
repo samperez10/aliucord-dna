@@ -36,7 +36,7 @@ subprojects {
     }
 
     configure<AliucordExtension> {
-        author("samperez10", 0L, hyperlink = false)
+        author("xnote12", 0L, hyperlink = false)
         github("https://github.com/samperez10/aliucord-dns")
     }
 
