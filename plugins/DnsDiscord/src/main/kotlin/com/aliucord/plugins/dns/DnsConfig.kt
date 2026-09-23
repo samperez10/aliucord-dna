@@ -26,14 +26,14 @@ class DnsPreset(
         val GOOGLE = DnsPreset(
             "GOOGLE",
             "Google (8.8.8.8)",
-            "https://dns.google/dns-query",
+            "https://dns.google/resolve",
             "8.8.8.8",
             "8.8.4.4"
         )
         val ADGUARD = DnsPreset(
             "ADGUARD",
             "AdGuard DNS (Blocks Ads/Trackers)",
-            "https://dns.adguard-dns.com/dns-query",
+            "https://dns.adguard-dns.com/resolve",
             "94.140.14.14",
             "94.140.15.15"
         )

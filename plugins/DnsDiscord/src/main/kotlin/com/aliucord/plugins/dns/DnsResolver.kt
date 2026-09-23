@@ -24,7 +24,7 @@ class DnsResolver(var config: DnsConfig) {
         override fun initialValue(): Boolean = false
     }
 
-    fun lookup(hostname: String): List<InetAddress> {
+    fun lookup(hostname: String, rethrowExceptions: Boolean = false): List<InetAddress> {
         if (hostname.isEmpty() || hostname.trim().isEmpty() || !config.enabled) return emptyList()
 
         // Prevent recursive intercept when the resolver is looking up DoH endpoint
@@ -63,7 +63,8 @@ class DnsResolver(var config: DnsConfig) {
                 DnsMode.UDP -> resolveUdp(hostname)
                 else -> null
             }
-        } catch (ignored: Exception) {
+        } catch (e: Exception) {
+            if (rethrowExceptions) throw e
         } finally {
             isResolving.set(false)
         }
@@ -81,10 +82,18 @@ class DnsResolver(var config: DnsConfig) {
      * Resolves host using DNS-over-HTTPS (DoH) with JSON API
      */
     fun resolveDoH(hostname: String): List<InetAddress> {
-        val dohEndpoint = when {
+        var dohEndpoint = when {
             config.dohUrl.trim().isNotEmpty() -> config.dohUrl
             config.preset.dohUrl.trim().isNotEmpty() -> config.preset.dohUrl
             else -> DnsPreset.CLOUDFLARE.dohUrl
+        }
+
+        if (dohEndpoint.contains("dns.google") && !dohEndpoint.contains("/resolve")) {
+            dohEndpoint = "https://dns.google/resolve"
+        } else if (dohEndpoint.contains("adguard-dns.com") && !dohEndpoint.contains("/resolve")) {
+            dohEndpoint = "https://dns.adguard-dns.com/resolve"
+        } else if (dohEndpoint.contains("quad9.net")) {
+            return resolveUdp(hostname)
         }
 
         val queryUrl = if (dohEndpoint.contains("?")) {

@@ -245,7 +245,7 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                 Thread {
                     val start = System.currentTimeMillis()
                     try {
-                        val addresses = DnsPlugin.resolver.lookup("discord.com")
+                        val addresses = DnsPlugin.resolver.lookup("discord.com", rethrowExceptions = true)
                         val elapsed = System.currentTimeMillis() - start
                         val sb = StringBuilder()
                         var a = 0
@@ -257,11 +257,19 @@ class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
                         val ipList = if (sb.isNotEmpty()) sb.toString() else "(none resolved)"
                         mainHandler.post {
                             it.isEnabled = true
-                            AlertDialog.Builder(ctx)
-                                .setTitle("DNS Test Success")
-                                .setMessage("Resolved discord.com in ${elapsed}ms\n\nAddresses:\n$ipList\n\nMode: ${config.mode}")
-                                .setPositiveButton("OK", null)
-                                .show()
+                            if (addresses.isNotEmpty()) {
+                                AlertDialog.Builder(ctx)
+                                    .setTitle("DNS Test Success")
+                                    .setMessage("Resolved discord.com in ${elapsed}ms\n\nAddresses:\n$ipList\n\nMode: ${config.mode}")
+                                    .setPositiveButton("OK", null)
+                                    .show()
+                            } else {
+                                AlertDialog.Builder(ctx)
+                                    .setTitle("DNS Test: No Results")
+                                    .setMessage("No IP addresses returned after ${elapsed}ms\n\nMode: ${config.mode}\nEndpoint: ${if (config.mode == DnsMode.DOH) config.dohUrl else config.primaryDnsIp}")
+                                    .setPositiveButton("OK", null)
+                                    .show()
+                            }
                         }
                     } catch (e: Throwable) {
                         val elapsed = System.currentTimeMillis() - start
