@@ -11,14 +11,24 @@ import okhttp3.OkHttpClient
 @AliucordPlugin(requiresRestart = false)
 class DnsPlugin : Plugin() {
 
-    lateinit var resolver: DnsResolver
-        private set
+    companion object {
+        var instance: DnsPlugin? = null
+        var resolver: DnsResolver = DnsResolver(DnsConfig())
+
+        fun saveConfig(newConfig: DnsConfig) {
+            resolver.config = newConfig
+            resolver.clearCache()
+            instance?.settings?.setString("config_json", newConfig.toJsonString())
+        }
+    }
 
     init {
         settingsTab = SettingsTab(PluginSettings::class.java).withArgs(this)
     }
 
     override fun start(context: Context) {
+        instance = this
+
         // Load stored configuration from JSON
         val savedJson = settings.getString("config_json", "")
         val config = if (savedJson.isNullOrBlank()) {
@@ -27,7 +37,8 @@ class DnsPlugin : Plugin() {
             DnsConfig.fromJson(savedJson)
         }
 
-        resolver = DnsResolver(config)
+        resolver.config = config
+        resolver.clearCache()
 
         // 1. Patch Dns.SYSTEM so all existing and default OkHttp clients use our DNS resolver
         try {
@@ -56,15 +67,12 @@ class DnsPlugin : Plugin() {
     }
 
     fun saveConfig(newConfig: DnsConfig) {
-        resolver.config = newConfig
-        resolver.clearCache()
-        settings.setString("config_json", newConfig.toJsonString())
+        Companion.saveConfig(newConfig)
     }
 
     override fun stop(context: Context) {
         patcher.unpatchAll()
-        if (::resolver.isInitialized) {
-            resolver.clearCache()
-        }
+        resolver.clearCache()
+        instance = null
     }
 }

@@ -17,7 +17,7 @@ import com.aliucord.views.Divider
 import com.aliucord.views.TextInput
 import com.discord.views.CheckedSetting
 
-class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
+class PluginSettings(private val plugin: DnsPlugin? = null) : SettingsPage() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -26,7 +26,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
         super.onViewBound(view)
 
         val ctx = requireContext()
-        val config = plugin.resolver.config
+        val config = DnsPlugin.resolver.config
         val dp10 = DimenUtils.dpToPx(10)
 
         setActionBarTitle("Discord DNS Settings")
@@ -44,7 +44,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 isChecked = config.enabled
                 setOnCheckedListener {
                     config.enabled = it
-                    plugin.saveConfig(config)
+                    DnsPlugin.saveConfig(config)
                     Utils.showToast("DNS " + if (it) "Enabled" else "Disabled")
                 }
             }
@@ -60,7 +60,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 isChecked = config.fallbackToSystem
                 setOnCheckedListener {
                     config.fallbackToSystem = it
-                    plugin.saveConfig(config)
+                    DnsPlugin.saveConfig(config)
                 }
             }
         )
@@ -98,21 +98,21 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
         dohSwitch.setOnCheckedListener {
             if (it) {
                 config.mode = DnsMode.DOH
-                plugin.saveConfig(config)
+                DnsPlugin.saveConfig(config)
                 updateModeRadios()
             }
         }
         udpSwitch.setOnCheckedListener {
             if (it) {
                 config.mode = DnsMode.UDP
-                plugin.saveConfig(config)
+                DnsPlugin.saveConfig(config)
                 updateModeRadios()
             }
         }
         staticSwitch.setOnCheckedListener {
             if (it) {
                 config.mode = DnsMode.STATIC_ONLY
-                plugin.saveConfig(config)
+                DnsPlugin.saveConfig(config)
                 updateModeRadios()
             }
         }
@@ -134,7 +134,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 config.primaryDnsIp = preset.primaryIp
                 config.secondaryDnsIp = preset.secondaryIp
             }
-            plugin.saveConfig(config)
+            DnsPlugin.saveConfig(config)
             Utils.showToast("Applied preset: ${preset.displayName}")
             reRender()
         }
@@ -185,7 +185,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 config.primaryDnsIp = primaryIpInput.editText.text.toString().trim()
                 config.secondaryDnsIp = secondaryIpInput.editText.text.toString().trim()
                 config.preset = DnsPreset.CUSTOM
-                plugin.saveConfig(config)
+                DnsPlugin.saveConfig(config)
                 Utils.showToast("Endpoints saved successfully!")
             }
         }
@@ -211,7 +211,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
             setOnClickListener {
                 showAddHostDialog(ctx) { host, ip ->
                     config.staticHosts[host.lowercase()] = ip
-                    plugin.saveConfig(config)
+                    DnsPlugin.saveConfig(config)
                     Utils.showToast("Mapped $host -> $ip")
                     reRender()
                 }
@@ -224,7 +224,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 text = "Clear All Static Mappings (${config.staticHosts.size})"
                 setOnClickListener {
                     config.staticHosts.clear()
-                    plugin.saveConfig(config)
+                    DnsPlugin.saveConfig(config)
                     Utils.showToast("Static mappings cleared!")
                     reRender()
                 }
@@ -245,7 +245,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 Thread {
                     val start = System.currentTimeMillis()
                     try {
-                        val addresses = plugin.resolver.lookup("discord.com")
+                        val addresses = DnsPlugin.resolver.lookup("discord.com")
                         val elapsed = System.currentTimeMillis() - start
                         val ipList = addresses.joinToString(", ") { addr -> addr.hostAddress ?: "" }
                         mainHandler.post {
@@ -318,7 +318,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
 
     private fun showJsonStorageDialog(ctx: android.content.Context) {
         val editText = EditText(ctx).apply {
-            setText(plugin.resolver.config.toJsonString(2))
+            setText(DnsPlugin.resolver.config.toJsonString(2))
             typeface = android.graphics.Typeface.MONOSPACE
             textSize = 12f
             setHorizontallyScrolling(true)
@@ -337,7 +337,7 @@ class PluginSettings(private val plugin: DnsPlugin) : SettingsPage() {
                 try {
                     val rawText = editText.text.toString()
                     val newConfig = DnsConfig.fromJson(rawText)
-                    plugin.saveConfig(newConfig)
+                    DnsPlugin.saveConfig(newConfig)
                     Utils.showToast("JSON configuration saved!")
                     reRender()
                 } catch (e: Exception) {
